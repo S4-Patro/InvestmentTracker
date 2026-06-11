@@ -1,0 +1,296 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ──────────────────────────────────────────────── */
+:root {
+  --ink:    #1A1A18;
+  --paper:  #F7F4EE;
+  --warm:   #8A8880;
+  --subtle: #E2DDD5;
+  --accent: #C8372D;
+  --up:     #1A6B3C;
+  --down:   #C8372D;
+
+  --f-display: 'Playfair Display', Georgia, serif;
+  --f-body:    'Inter', system-ui, sans-serif;
+  --f-mono:    'Inter', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 14px; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--subtle); }
+
+/* ─── Typography ─────────────────────────────────────────────────── */
+.display {
+  font-family: var(--f-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warm);
+}
+
+.mono {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Rules (the signature element) ─────────────────────────────── */
+.rule {
+  height: 1px;
+  background: var(--ink);
+  transform-origin: left;
+  animation: rule-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.rule-subtle {
+  height: 1px;
+  background: var(--subtle);
+}
+
+@keyframes rule-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.rule-v {
+  width: 1px;
+  background: var(--subtle);
+  align-self: stretch;
+}
+
+/* ─── Cards / sections ───────────────────────────────────────────── */
+.section {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--subtle);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+/* ─── KPI block ──────────────────────────────────────────────────── */
+.kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--warm);
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-family: var(--f-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* ─── Tags — square corners, ink border ──────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  border-radius: 0;
+}
+
+.tag-muted {
+  border-color: var(--subtle);
+  color: var(--warm);
+}
+
+.tag-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.tag-up {
+  background: #EAF3E5;
+  border-color: var(--up);
+  color: var(--up);
+}
+
+.tag-down {
+  background: #F9ECEA;
+  border-color: var(--down);
+  color: var(--down);
+}
+
+/* ─── Allocation bar ─────────────────────────────────────────────── */
+.alloc-bar {
+  height: 3px;
+  background: var(--ink);
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: bar-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bar-in {
+  to { transform: scaleX(1); }
+}
+
+/* ─── Forms ──────────────────────────────────────────────────────── */
+input, select, textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+  border-radius: 0;
+  padding: 8px 0;
+  font-size: 13px;
+  font-family: var(--f-body);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-bottom-color: var(--accent);
+}
+
+input::placeholder { color: var(--warm); }
+select { cursor: pointer; appearance: none; }
+select option { background: var(--paper); color: var(--ink); }
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
+.btn {
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  padding: 9px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--f-body);
+}
+
+.btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.btn-ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.btn-ink:hover {
+  background: #3a3a38;
+}
+
+.btn-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-accent:hover {
+  background: #a8291f;
+  border-color: #a8291f;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 10px;
+}
+
+/* ─── Table ──────────────────────────────────────────────────────── */
+.ink-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ink-table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--warm);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ink);
+  text-align: left;
+}
+
+.ink-table th:not(:first-child) {
+  text-align: right;
+}
+
+.ink-table td {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--subtle);
+  vertical-align: middle;
+}
+
+.ink-table td:not(:first-child) {
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+
+.ink-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Status colors ──────────────────────────────────────────────── */
+.up   { color: var(--up); }
+.down { color: var(--down); }
+.muted { color: var(--warm); }
+
+/* ─── Tooltip override for recharts ─────────────────────────────── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--ink) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--paper) !important;
+  font-size: 12px !important;
+  font-family: var(--f-body) !important;
+}
+
+/* ─── Range input ────────────────────────────────────────────────── */
+input[type="range"] {
+  border: none;
+  border-bottom: none;
+  padding: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .rule, .alloc-bar { animation: none; transform: scaleX(1); opacity: 1; }
+}

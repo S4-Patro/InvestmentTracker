@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # InvestOS — Personal Investment Dashboard
 
 A self-hosted investment tracking dashboard. All data stays in your browser (localStorage). Live gold + stock prices fetched on demand. AI insights powered by Claude.
@@ -103,3 +104,7 @@ To export your data: open browser DevTools → Application → localStorage → 
 - Tailwind CSS
 - TypeScript
 - Anthropic Claude API for insights
+=======
+# InvestmentTracker
+A personal investment dashboard to track net worth ( SIPs, stocks, gold, FDs) and more in one place, with live price updates, corpus forecasting, and AI-powered portfolio insights.
+>>>>>>> ab125a1ba4489ba38204c74f939691dd80a8c706

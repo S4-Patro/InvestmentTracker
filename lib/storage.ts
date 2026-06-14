@@ -2,7 +2,8 @@ export type InvestmentCategory =
   | 'mutual_fund_sip'
   | 'mutual_fund_lumpsum'
   | 'gold'
-  | 'stock'
+  | 'stock_india'
+  | 'stock_us'
   | 'ppf'
   | 'nps'
   | 'epf'
@@ -14,17 +15,19 @@ export type InvestmentCategory =
 
 export type AssetClass = 'equity' | 'debt' | 'gold' | 'hybrid' | 'other';
 
+export type BubbleCategory = 'stocks' | 'mutual_funds' | 'gold' | 'fd_rd' | 'retirement' | 'govt';
+
 export interface SIP {
   id: string;
-  name: string;          // Fund/scheme name
-  amount: number;        // Monthly SIP amount
-  startDate: string;     // ISO date
-  sipDate: number;       // Day of month (1-28)
+  name: string;
+  amount: number;
+  startDate: string;
+  sipDate: number;
   category: InvestmentCategory;
   assetClass: AssetClass;
-  ticker?: string;       // For price lookup (stocks/ETFs)
-  units?: number;        // Manually tracked units if needed
-  currentNav?: number;   // Last known NAV/price
+  ticker?: string;
+  units?: number;
+  currentNav?: number;
   notes?: string;
 }
 
@@ -33,28 +36,20 @@ export interface ManualInvestment {
   name: string;
   category: InvestmentCategory;
   assetClass: AssetClass;
-  amount: number;        // Amount invested
-  date: string;          // ISO date of investment
-  units?: number;        // Units purchased (for MF/stocks/gold)
-  buyPrice?: number;     // Price per unit at purchase
-  ticker?: string;       // For live price fetch
-  currentPrice?: number; // Last fetched price
-  maturityDate?: string; // For FDs/bonds/RDs
-  maturityAmount?: number; // Expected maturity value
-  interestRate?: number; // Annual % for FD/RD/bonds
+  amount: number;
+  date: string;
+  units?: number;
+  buyPrice?: number;
+  ticker?: string;
+  currentPrice?: number;
+  maturityDate?: string;
+  maturityAmount?: number;
+  interestRate?: number;
   notes?: string;
 }
 
-export interface PriceCache {
-  [ticker: string]: {
-    price: number;
-    change: number;       // % change
-    fetchedAt: string;    // ISO timestamp
-  };
-}
-
 export interface GoldPrice {
-  pricePerGram: number;  // INR per gram (24k)
+  pricePerGram: number;
   change: number;
   fetchedAt: string;
 }
@@ -62,12 +57,12 @@ export interface GoldPrice {
 export interface PortfolioData {
   sips: SIP[];
   manualInvestments: ManualInvestment[];
-  priceCache: PriceCache;
+  priceCache: Record<string, { price: number; change: number; fetchedAt: string }>;
   goldPrice: GoldPrice | null;
   lastUpdated: string;
 }
 
-const STORAGE_KEY = 'investos_portfolio';
+const STORAGE_KEY = 'investos_portfolio_v2';
 
 export function loadPortfolio(): PortfolioData {
   if (typeof window === 'undefined') return emptyPortfolio();
@@ -75,9 +70,7 @@ export function loadPortfolio(): PortfolioData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyPortfolio();
     return JSON.parse(raw) as PortfolioData;
-  } catch {
-    return emptyPortfolio();
-  }
+  } catch { return emptyPortfolio(); }
 }
 
 export function savePortfolio(data: PortfolioData): void {
@@ -86,20 +79,12 @@ export function savePortfolio(data: PortfolioData): void {
 }
 
 export function emptyPortfolio(): PortfolioData {
-  return {
-    sips: [],
-    manualInvestments: [],
-    priceCache: {},
-    goldPrice: null,
-    lastUpdated: new Date().toISOString(),
-  };
+  return { sips: [], manualInvestments: [], priceCache: {}, goldPrice: null, lastUpdated: new Date().toISOString() };
 }
 
 export function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
-
-// ─── Calculation helpers ────────────────────────────────────────────────────
 
 export function calcSIPInvested(sip: SIP): number {
   const start = new Date(sip.startDate);
@@ -111,84 +96,73 @@ export function calcSIPInvested(sip: SIP): number {
 
 export function calcSIPCurrentValue(sip: SIP): number {
   if (sip.units && sip.currentNav) return sip.units * sip.currentNav;
-  // Fallback: assume 12% CAGR on invested amount
   const invested = calcSIPInvested(sip);
   const months = invested / sip.amount;
   if (months <= 0) return 0;
-  const monthlyRate = 0.12 / 12;
-  return sip.amount * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
+  const r = 0.12 / 12;
+  return sip.amount * ((Math.pow(1 + r, months) - 1) / r) * (1 + r);
 }
 
 export function calcManualCurrentValue(inv: ManualInvestment, goldPrice: GoldPrice | null): number {
-  if (inv.category === 'gold' && goldPrice && inv.units) {
-    return inv.units * goldPrice.pricePerGram;
-  }
+  if (inv.category === 'gold' && goldPrice && inv.units) return inv.units * goldPrice.pricePerGram;
   if (inv.currentPrice && inv.units) return inv.units * inv.currentPrice;
-  if (inv.maturityAmount && inv.interestRate && inv.maturityDate) {
-    // Simple accrued value for FD/bonds
+  if (inv.maturityAmount && inv.maturityDate) {
     const start = new Date(inv.date).getTime();
     const end = new Date(inv.maturityDate).getTime();
     const now = Date.now();
     const elapsed = Math.min(now - start, end - start);
     const total = end - start;
-    const accrued = elapsed / total;
-    return inv.amount + (inv.maturityAmount - inv.amount) * accrued;
+    return inv.amount + (inv.maturityAmount - inv.amount) * (elapsed / total);
   }
   return inv.amount;
 }
 
-export function xirr(invested: number, currentValue: number, years: number): number {
+export function xirr(invested: number, current: number, years: number): number {
   if (invested <= 0 || years <= 0) return 0;
-  return (Math.pow(currentValue / invested, 1 / years) - 1) * 100;
+  return (Math.pow(current / invested, 1 / years) - 1) * 100;
 }
 
-export function sipForecast(
-  monthlySIP: number,
-  lumpsum: number,
-  years: number,
-  cagr: number
-): number {
-  const monthlyRate = cagr / 12;
-  const months = years * 12;
-  const sipFV = monthlySIP * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
-  const lumpsumFV = lumpsum * Math.pow(1 + cagr, years);
-  return sipFV + lumpsumFV;
+export function sipForecast(monthly: number, lumpsum: number, years: number, cagr: number): number {
+  const r = cagr / 12;
+  const n = years * 12;
+  return monthly * ((Math.pow(1 + r, n) - 1) / r) * (1 + r) + lumpsum * Math.pow(1 + cagr, years);
 }
 
 export const CATEGORY_LABELS: Record<InvestmentCategory, string> = {
   mutual_fund_sip: 'Mutual Fund SIP',
   mutual_fund_lumpsum: 'MF Lumpsum',
   gold: 'Gold',
-  stock: 'Stock',
+  stock_india: 'India Stock',
+  stock_us: 'US Stock',
   ppf: 'PPF',
   nps: 'NPS',
   epf: 'EPF',
   fd: 'Fixed Deposit',
   rd: 'Recurring Deposit',
-  bond: 'Bond',
+  bond: 'Bond / SGB',
   chit_fund: 'Chit Fund',
   other: 'Other',
 };
 
-export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
-  equity: 'Equity',
-  debt: 'Debt',
-  gold: 'Gold',
-  hybrid: 'Hybrid',
-  other: 'Other',
+export const CATEGORY_ASSET_CLASS: Record<InvestmentCategory, AssetClass> = {
+  mutual_fund_sip: 'equity', mutual_fund_lumpsum: 'equity',
+  gold: 'gold', stock_india: 'equity', stock_us: 'equity',
+  ppf: 'debt', nps: 'hybrid', epf: 'debt',
+  fd: 'debt', rd: 'debt', bond: 'debt', chit_fund: 'other', other: 'other',
 };
 
-export const CATEGORY_ASSET_CLASS: Record<InvestmentCategory, AssetClass> = {
-  mutual_fund_sip: 'equity',
-  mutual_fund_lumpsum: 'equity',
-  gold: 'gold',
-  stock: 'equity',
-  ppf: 'debt',
-  nps: 'hybrid',
-  epf: 'debt',
-  fd: 'debt',
-  rd: 'debt',
-  bond: 'debt',
-  chit_fund: 'other',
-  other: 'other',
+export const CATEGORY_BUBBLE: Record<InvestmentCategory, BubbleCategory> = {
+  mutual_fund_sip: 'mutual_funds', mutual_fund_lumpsum: 'mutual_funds',
+  gold: 'gold', stock_india: 'stocks', stock_us: 'stocks',
+  ppf: 'govt', nps: 'retirement', epf: 'retirement',
+  fd: 'fd_rd', rd: 'fd_rd', bond: 'govt', chit_fund: 'fd_rd', other: 'fd_rd',
+};
+
+export const BUBBLE_META: Record<BubbleCategory, { label: string; color: string; glow: string; tag: string }> = {
+  stocks:       { label: 'Stocks',       color: '#4ade80', glow: 'rgba(74,222,128,0.25)',  tag: 'tag-green'  },
+  mutual_funds: { label: 'Mutual Funds', color: '#60a5fa', glow: 'rgba(96,165,250,0.25)',  tag: 'tag-blue'   },
+  gold:         { label: 'Gold',         color: '#f59e0b', glow: 'rgba(245,158,11,0.25)',  tag: 'tag-gold'   },
+  fd_rd:        { label: 'FD / RD',      color: '#a78bfa', glow: 'rgba(167,139,250,0.25)', tag: 'tag-purple' },
+  retirement:   { label: 'Retirement',   color: '#fb923c', glow: 'rgba(251,146,60,0.25)',  tag: 'tag-red'    },
+  govt:         { label: 'Govt Backed',  color: '#34d399', glow: 'rgba(52,211,153,0.25)',  tag: 'tag-green'  },
 };

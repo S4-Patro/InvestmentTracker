@@ -17,112 +17,125 @@ const fmtPct  = (n:number) => `${n>=0?'+':''}${n.toFixed(2)}%`;
 type Tab = 'overview'|'portfolio'|'add'|'plan';
 type AddMode = 'sip'|'manual'|'liability';
 
-/* ══ INTRO: SQUARE CEILING PANEL LIGHTS ═══════════════════════════ */
+/* ══ INTRO: DARK ROOM + CEILING GRID + BOUNCING RUPEE ══════════════ */
 function IntroScreen({ onEnter }: { onEnter:()=>void }) {
-  const [lights, setLights] = useState([false,false,false,false,false]);
-  const [phase, setPhase] = useState(0);
-  const [typed, setTyped] = useState('');
+  const COLS = 4; const ROWS = 3; const TOTAL = COLS * ROWS;
+  const [lights, setLights] = useState<boolean[]>(Array(TOTAL).fill(false));
+  const [phase, setPhase]   = useState(0);
+  const [typed, setTyped]   = useState('');
   const [showBtn, setShowBtn] = useState(false);
+  const [rupeeY, setRupeeY]  = useState(80);
+  const [rupeeVisible, setRupeeVisible] = useState(false);
   const full = 'Track every rupee.';
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    [0,1,2,3,4].forEach(i => {
+    const flickerOn = (idx: number, delay: number) => {
       timers.push(setTimeout(() => {
         let flickers = 0;
-        const maxF = 4 + Math.floor(Math.random()*4);
-        const flicker = () => {
-          setLights(l => { const n=[...l]; n[i]=!n[i]; return n; });
+        const maxF = 3 + Math.floor(Math.random() * 4);
+        const go = () => {
+          setLights(l => { const n = [...l]; n[idx] = !n[idx]; return n; });
           flickers++;
-          if (flickers < maxF*2) setTimeout(flicker, 50+Math.random()*140);
-          else setLights(l => { const n=[...l]; n[i]=true; return n; });
+          if (flickers < maxF * 2) timers.push(setTimeout(go, 40 + Math.random() * 110));
+          else setLights(l => { const n = [...l]; n[idx] = true; return n; });
         };
-        flicker();
-      }, 300 + i*600));
-    });
-    timers.push(setTimeout(() => setPhase(1), 4200));
+        go();
+      }, delay));
+    };
+    const order = Array.from({length:TOTAL},(_,i)=>i).sort(()=>Math.random()-0.5);
+    order.forEach((idx, i) => flickerOn(idx, 200 + i * 260 + Math.random() * 180));
+    timers.push(setTimeout(() => { setRupeeVisible(true); }, 200 + TOTAL * 260 + 500));
     return () => timers.forEach(clearTimeout);
   }, []);
 
   useEffect(() => {
-    if (phase !== 1) return;
+    if (!rupeeVisible) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const seq = [{y:-10,t:0},{y:12,t:160},{y:-6,t:300},{y:3,t:420},{y:-1,t:510},{y:0,t:580}];
+    seq.forEach(({y,t}) => timers.push(setTimeout(() => setRupeeY(y), t)));
+    timers.push(setTimeout(() => setPhase(3), 860));
+    return () => timers.forEach(clearTimeout);
+  }, [rupeeVisible]);
+
+  useEffect(() => {
+    if (phase !== 3) return;
     let i = 0;
     const iv = setInterval(() => {
-      setTyped(full.slice(0,i+1)); i++;
-      if (i >= full.length) { clearInterval(iv); setTimeout(()=>setShowBtn(true),300); }
+      setTyped(full.slice(0, i + 1)); i++;
+      if (i >= full.length) { clearInterval(iv); setTimeout(() => setShowBtn(true), 350); }
     }, 65);
     return () => clearInterval(iv);
   }, [phase]);
 
-  const anyOn = lights.some(Boolean);
-
-  // Square panel light
-  const Panel = ({ on }: { on: boolean }) => (
-    <div style={{
-      width: 110, height: 110,
-      background: on
-        ? 'linear-gradient(145deg,#f0fff0,#d4f5d4,#e8ffe8)'
-        : '#0c110c',
-      borderRadius: 4,
-      border: `1px solid ${on ? 'rgba(180,255,160,0.5)' : '#141a14'}`,
-      boxShadow: on
-        ? '0 0 60px 20px rgba(160,255,120,0.25), 0 0 120px 40px rgba(74,222,128,0.12), inset 0 0 30px rgba(200,255,180,0.3)'
-        : 'inset 0 0 8px rgba(0,0,0,0.5)',
-      transition: 'background 0.03s, box-shadow 0.03s',
-      position: 'relative',
-      overflow: 'hidden',
-      flexShrink: 0,
-    }}>
-      {/* Panel grid lines */}
-      <div style={{ position:'absolute', inset:0, display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1fr 1fr', gap:1 }}>
-        {[0,1,2,3].map(k => (
-          <div key={k} style={{ background: on ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.02)', borderRadius:2 }}/>
-        ))}
-      </div>
-      {/* Recessed edge shadow */}
-      <div style={{ position:'absolute', inset:3, border:`1px solid ${on?'rgba(0,0,0,0.1)':'rgba(255,255,255,0.03)'}`, borderRadius:2 }}/>
-    </div>
-  );
+  const litCount = lights.filter(Boolean).length;
+  const brightness = litCount / TOTAL;
+  const bgR = Math.round(5 + brightness * 12);
+  const bgG = Math.round(9 + brightness * 18);
+  const bgB = Math.round(12 + brightness * 20);
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'#060908', display:'flex', flexDirection:'column', alignItems:'center', overflow:'hidden' }}>
-      {/* Ceiling mount bar */}
-      <div style={{ width:'100%', background:'#080d08', borderBottom:'2px solid #101510', padding:'20px 0 20px', display:'flex', justifyContent:'center', gap:28 }}>
-        {lights.map((on,i) => <Panel key={i} on={on}/>)}
-      </div>
-
-      {/* Light cones */}
-      <div style={{ position:'absolute', top:152, left:0, right:0, display:'flex', justifyContent:'center', gap:28, pointerEvents:'none' }}>
-        {lights.map((on,i) => (
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:`rgb(${bgR},${bgG},${bgB})`, display:'flex', flexDirection:'column', overflow:'hidden', transition:'background 0.25s' }}>
+      {/* Ceiling grid */}
+      <div style={{
+        width:'100%', height:'40%', flexShrink:0,
+        background:`linear-gradient(180deg,#030505 0%,rgba(8,14,12,0.95) 100%)`,
+        borderBottom:`1px solid rgba(255,255,255,${0.02+brightness*0.05})`,
+        padding:'12px 16px 10px',
+        display:'grid',
+        gridTemplateColumns:`repeat(${COLS},1fr)`,
+        gridTemplateRows:`repeat(${ROWS},1fr)`,
+        gap:6,
+      }}>
+        {lights.map((on, i) => (
           <div key={i} style={{
-            width:110, height: on?'65vh':0,
-            background: on ? 'linear-gradient(180deg,rgba(160,255,120,0.07) 0%,transparent 100%)' : 'none',
-            transition:'height 0.4s ease',
-            clipPath:'polygon(5% 0%,95% 0%,100% 100%,0% 100%)',
-          }}/>
+            borderRadius:3,
+            background: on ? 'linear-gradient(150deg,#eaf8e4,#caf0c4,#daf6d4)' : `rgba(255,255,255,${0.008+brightness*0.012})`,
+            border:`1px solid ${on?'rgba(170,235,140,0.45)':'rgba(255,255,255,0.03)'}`,
+            boxShadow: on ? '0 0 28px 6px rgba(150,230,110,0.2),0 0 60px 16px rgba(90,190,70,0.09),inset 0 0 18px rgba(210,250,190,0.22)' : 'none',
+            transition:'background 0.04s,box-shadow 0.04s',
+            position:'relative', overflow:'hidden',
+          }}>
+            <div style={{ position:'absolute', inset:0, display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1fr 1fr', gap:'1px' }}>
+              {[0,1,2,3].map(k=><div key={k} style={{ background:on?'rgba(255,255,255,0.1)':'transparent' }}/>)}
+            </div>
+            <div style={{ position:'absolute', inset:2, border:`1px solid ${on?'rgba(0,0,0,0.07)':'rgba(255,255,255,0.015)'}`, borderRadius:2 }}/>
+          </div>
         ))}
       </div>
 
-      {/* Center content */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:10, gap:24, marginTop:-40 }}>
-        <div style={{
-          fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:64,
-          color: anyOn ? '#4ade80' : '#0f1a0f',
-          letterSpacing:'-0.05em', userSelect:'none',
-          textShadow: anyOn ? '0 0 60px rgba(74,222,128,0.7),0 0 120px rgba(74,222,128,0.3)' : 'none',
-          transition:'color 0.5s,text-shadow 0.5s',
-        }}>S4</div>
+      {/* Light shafts from bottom row panels */}
+      <div style={{ position:'absolute', top:'40%', left:0, right:0, bottom:0, pointerEvents:'none', overflow:'hidden' }}>
+        {lights.map((on, i) => {
+          const col = i % COLS; const row = Math.floor(i / COLS);
+          if (!on || row !== ROWS-1) return null;
+          const xPct = (col + 0.5) / COLS * 100;
+          return <div key={i} style={{ position:'absolute', left:`${xPct-9}%`, width:'18%', top:0, bottom:0, background:'linear-gradient(180deg,rgba(150,230,110,0.05) 0%,transparent 75%)', clipPath:'polygon(8% 0%,92% 0%,100% 100%,0% 100%)' }}/>;
+        })}
+      </div>
 
-        {anyOn && (
-          <div style={{ fontSize:80, fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, color:'transparent', WebkitTextStroke:'2px #4ade80', filter:'drop-shadow(0 0 24px rgba(74,222,128,0.6))', animation:'fadeIn 0.7s ease', userSelect:'none', lineHeight:1 }}>₹</div>
+      {/* Room depth shadows */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'28%', background:'linear-gradient(0deg,rgba(0,0,0,0.5) 0%,transparent 100%)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', top:'40%', left:0, width:'6%', bottom:0, background:'linear-gradient(90deg,rgba(0,0,0,0.4) 0%,transparent 100%)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', top:'40%', right:0, width:'6%', bottom:0, background:'linear-gradient(-90deg,rgba(0,0,0,0.4) 0%,transparent 100%)', pointerEvents:'none' }}/>
+
+      {/* Center content in the room */}
+      <div style={{ position:'absolute', top:'40%', left:0, right:0, bottom:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:18, zIndex:10 }}>
+        {rupeeVisible && (
+          <div style={{
+            fontSize:100, fontFamily:"'Space Grotesk',sans-serif", fontWeight:700,
+            color:'transparent', WebkitTextStroke:'2.5px #4ade80',
+            filter:'drop-shadow(0 0 36px rgba(74,222,128,0.75)) drop-shadow(0 0 80px rgba(74,222,128,0.3))',
+            transform:`translateY(${rupeeY}px)`,
+            transition:'transform 0.15s cubic-bezier(0.34,1.56,0.64,1)',
+            userSelect:'none', lineHeight:1,
+          }}>₹</div>
         )}
-
-        {phase >= 1 && (
-          <div style={{ fontSize:28, fontWeight:500, color:'#c8e6c0', fontFamily:"'Space Grotesk',sans-serif", letterSpacing:'-0.01em', textAlign:'center', minHeight:40 }}>
+        {phase >= 3 && (
+          <div style={{ fontSize:26, fontWeight:500, color:'#c0e4b4', fontFamily:"'Space Grotesk',sans-serif", letterSpacing:'-0.01em', textAlign:'center', minHeight:36, animation:'fadeIn 0.4s ease' }}>
             {typed}<span style={{ opacity:showBtn?0:1, color:'#4ade80', transition:'opacity 0.3s' }}>|</span>
           </div>
         )}
-
         {showBtn && (
           <button onClick={onEnter} className="btn-accent" style={{ fontSize:14, padding:'13px 40px', letterSpacing:'0.05em', animation:'fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
             Enter dashboard →
@@ -130,8 +143,8 @@ function IntroScreen({ onEnter }: { onEnter:()=>void }) {
         )}
       </div>
 
-      <div style={{ position:'absolute', bottom:24, right:28, fontFamily:"'Inter',sans-serif", fontSize:10, color:'#1a2a1a', letterSpacing:'0.1em', textTransform:'uppercase' }}>Personal finance OS</div>
-      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}} @keyframes scaleIn{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}`}</style>
+      <div style={{ position:'absolute', bottom:22, left:28, fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:18, color:`rgba(74,222,128,${0.15+brightness*0.55})`, letterSpacing:'-0.04em', transition:'color 0.4s', userSelect:'none' }}>S4</div>
+      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}} @keyframes scaleIn{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}`}</style>
     </div>
   );
 }
